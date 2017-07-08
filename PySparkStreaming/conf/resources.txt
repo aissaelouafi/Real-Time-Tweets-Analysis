@@ -1,0 +1,28 @@
+nifi 1.3.1 : ./usr/local/Cellar/nifi/3.1.0/bin/nifi start
+      http://localhost:8080
+Spark (2.1.1)
+SOLR : ./usr/local/Cellar/solr/6.6.0/bin/solr -p 4433
+      http://localhost:4433
+KAFKA 0.10.2.0 : ./kafka-server-start /usr/local/etc/kafka/server.properties
+
+create a kafka topic
+./kafka-topics --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic tweets
+
+consume kafka console
+./kafka-console-consumer --bootstrap-server localhost:9092 --topic tweets --from-beginning
+
+set retention time of kafka topic to 10 minutes
+./kafka-topics --zookeeper localhost:2181 --alter --topic tweets --config retention.ms=36000
+
+verifier la conf du topic
+./kafka-topics --zookeeper localhost:2181 --describe --topic tweets
+Topic:tweets	PartitionCount:1	ReplicationFactor:1	Configs:retention.ms=36000
+	Topic: tweets	Partition: 0	Leader: 0	Replicas: 0	Isr: 0
+
+
+Repo HortonsWorks
+http://repo.hortonworks.com/index.html#welcome
+
+
+Submit the spark streaming job with the kafka jar 
+./spark-submit --jars ~/Desktop/MLProjets/RealTimeTweetsAnalysis/PySparkStreaming/jars/spark-streaming-kafka-0-8-assembly_2.11-2.1.1.2.6.1.1-2.jar  ~/Desktop/MLProjets/RealTimeTweetsAnalysis/PySparkStreaming/prediction/stream_prediction.py
