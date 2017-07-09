@@ -1,6 +1,7 @@
 import twitter
 import requests
 import datetime
+import sys
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import HashingTF, IDF, Tokenizer #Features engineering generate tf-idf matrox
@@ -42,7 +43,7 @@ df.filter(df['Sentiment'] == 1).show()
 tokenizer = Tokenizer(inputCol="SentimentText", outputCol="SetimentTextTokenize")
 wordsData = tokenizer.transform(df)
 
-hashingTF = HashingTF(inputCol="SetimentTextTokenize", outputCol="rawFeatures", numFeatures=100000)
+hashingTF = HashingTF(inputCol="SetimentTextTokenize", outputCol="rawFeatures", numFeatures=1000)
 featurizedData = hashingTF.transform(wordsData)
 
 #Show first element of the train data (Sentiment and rawFeatures columns)
@@ -76,6 +77,11 @@ model = NaiveBayes.train(training)
 #print labels_and_preds.collect()
 print("\n Save the model : ")
 current_timestamp = datetime.datetime.fromtimestamp(int("1284101485")).strftime('%Y-%m-%d-%H:%M:%S')
-print(current_timestamp)
-model.save(sc,"/rf/"+current_timestamp)
-print("Model saved successfuly")
+
+
+try:
+    path = "./ML_models/NaiveClassifier/naiveBayesClassifier-"+current_timestamp
+    model.save(sc,path)
+    print("Model : "+path+" saved successfuly")
+except:
+    print "Unexcepted error ! Model unsaved"
