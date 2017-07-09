@@ -2,66 +2,80 @@ import twitter
 import requests
 import datetime
 from pyspark import SparkContext
-from pyspark.mllib.feature import HashingTF, IDF #Features engineering generate tf-idf matrox
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import HashingTF, IDF, Tokenizer #Features engineering generate tf-idf matrox
 from pyspark.mllib.regression import LabeledPoint #Object LabeledPoint to build the supervised dataframes
 from pyspark.mllib.classification import NaiveBayes  #Naive bayes classifiers
 from pyspark.ml.feature import StopWordsRemover
 from pyspark.ml.feature import PCA
+from pyspark.sql.types import StructType, StructField
+from pyspark.sql.types import DoubleType, IntegerType, StringType
 
-
-sc = SparkContext("local[2]","PySparkStreamingTest")
+sc = SparkContext()
 sc.setLogLevel("ERROR")
-
-#Functions
-def g(x):
-    print x
+#Intialize SparkSession, it will replace the SparkContext and the SQLContext in Spark 2.1.1
+spark = SparkSession.builder.appName("Real Time Tweets Sentiment Analysis").getOrCreate()
 
 
-#Define an obsolete train dataset
-train_data = sc.parallelize([{"text":"Aissa EL OUAFI je mappelle","label":0.0},
-                            {"text":"Messi est le meilleur joueur du monde","label":1.0},
-                            {"text":"Messi est un joueur magnifique ...","label":1.0},
-                            {"text":"Ronaldo est tellement nul","label":1.0}
-                            ])
+
+#Define the schema of the csv train data
+schema = StructType([
+    StructField("ItemID", IntegerType()),
+    StructField("Sentiment", IntegerType()),
+    StructField("SentimentSource", StringType()),
+    StructField("SentimentText",StringType())
+])
+
+#Upload the csv train data and show the first 20 lines of the dataframe
+df = spark.read.csv("/Users/aissaelouafi/Desktop/MLProjets/RealTimeTweetsAnalysis/PySparkStreaming/data/train_data.csv",header=True,schema=schema)
+print("\n The sentiment Text train data : ")
+df.select("SentimentText").show()
 
 
-#train_data.map(lambda doc: doc["text"].replace("...",""))
-#Split the train data in test and train
-labels = train_data.map(lambda doc:doc["label"])
-print("Label : ********************")
-print labels.collect()
+#Filter the dataframe and show the positive tweets
+labels = df.select("Sentiment")
+print("\n The first positive tweets : ")
+df.filter(df['Sentiment'] == 1).show()
 
 
-tf = HashingTF(numFeatures=1000).transform( ## Use much larger number in practice
-    train_data.map(lambda doc: doc["text"].split(" "),
-    preservesPartitioning=True))
+#Tokenize sentiment text
+tokenizer = Tokenizer(inputCol="SentimentText", outputCol="SetimentTextTokenize")
+wordsData = tokenizer.transform(df)
 
-#idf = IDF().fit(tf)
-#tfidf = idf.transform(tf)
-print("\nTF : ******************** ")
-print tf.collect()
+hashingTF = HashingTF(inputCol="SetimentTextTokenize", outputCol="rawFeatures", numFeatures=100000)
+featurizedData = hashingTF.transform(wordsData)
 
+#Show first element of the train data (Sentiment and rawFeatures columns)
+featurizedData.select("Sentiment","rawFeatures").show
 
-print("\nRT TF : ******************** ")
-test_2 = HashingTF(numFeatures=1000).transform("Bonjour je suis Aissa tres intelligent et vous ?!!".split(" "))
-print test_2
+#Show the number of lines
+print(featurizedData.count())
 
-
-# Combine using zip
-training = labels.zip(tf).map(lambda x: LabeledPoint(x[0], x[1]))
+#Select only the first 10000 observations
+featurizedData = featurizedData.filter(featurizedData.ItemID <= 500)
 
 
-print("\nTraining data : ******************** ")
-print training.collect()
+#Show the raw features column using the TF function
+print("\n The raw features (TF) using hashing function : ")
+featurizedData.select('rawFeatures').show()
 
+#Convert the spark dataframe to RDD
+train_rdd = featurizedData.select("Sentiment", "rawFeatures").rdd
 
-# Train and check
+#Convert the spark RDD to LabeledPoint object, this object will be the input of our NaiveBayes classifiers models
+training = train_rdd.map(lambda x: LabeledPoint(x[0], x[1:]))
+
+# Train the NaiveBayes classifier
 model = NaiveBayes.train(training)
-labels_and_preds = labels.zip(model.predict(tf)).map(lambda x: {"actual": x[0], "predicted": float(x[1])})
 
 
-print labels_and_preds.collect()
-#current_timestamp = datetime.datetime.fromtimestamp(int("1284101485")).strftime('%Y-%m-%d-%H:%M:%S')
-#print(current_timestamp)
-#model.save(sc,"/rf/"+current_timestamp)
-#print("Model saved successfuly")
+
+#labels_and_preds = labels.zip(model.predict(tf)).map(lambda x: {"actual": x[0], "predicted": float(x[1])})
+
+
+#print labels_and_preds.collect()
+print("\n Save the model : ")
+current_timestamp = datetime.datetime.fromtimestamp(int("1284101485")).strftime('%Y-%m-%d-%H:%M:%S')
+print(current_timestamp)
+model.save(sc,"/rf/"+current_timestamp)
+print("Model saved successfuly")
