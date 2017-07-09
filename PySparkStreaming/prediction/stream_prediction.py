@@ -100,6 +100,6 @@ ssc.awaitTermination()  # Wait for the computation to terminate
 #Convert the test datafrale to a RDD
 #test_rdd = featurizedData.select("rawFeatures").rdd
 
-#Convert the spark RDD to LabeledPoint object, this object will be the input of our NaiveBayes classifiers models
-#test = test_rdd.map(lambda p: (model.predict(p.rawFeatures)))
+#Convert the spark RDD to LabeledPoint object, this objesdsddct will be the input of our NaiveBayes classifiers models
+# test = test_rdd.map(lambda p: (model.predict(p.rawFeatures)))
 #test.pprint
