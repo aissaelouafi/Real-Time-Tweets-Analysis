@@ -16,24 +16,26 @@ from pyspark.sql.types import DoubleType, IntegerType, StringType
 
 from pyspark.sql import Row, SQLContext
 
-
-
+'''
 def predict(rdd):
     count = rdd.count()
     if(count>0):
         hashingTF = HashingTF(numFeatures=1000)
-        features = hashingTF.transform(rdd.map(lambda doc:doc["text"].split(" "))).
+        features = hashingTF.transform(rdd.map(lambda doc:doc["text"].split(" ")))
         result = model.transform(features)
         print result.probability
         #Here write result to SOLR
     else:
         print("No data receveid")
-
+'''
 
 #Create a local spark context and a streaming context
 sc = SparkContext("local[3]","PySparkStreamingTest")
 ssc = StreamingContext(sc,15)
 spark = SparkSession.builder.appName("Real Time Tweets Sentiment Analysis").getOrCreate()
+
+from pyspark.sql import SparkSession
+
 
 #Set Log Level to ERROR
 sc.setLogLevel("ERROR")
@@ -51,7 +53,7 @@ lines = ssc.socketTextStream("localhost", 9999)
 
 #Define the schema of the local context dataframe
 schema = StructType([
-    StructField("SentimentText", StringType())
+    StructField("SentimentText", StringType(), True)
 ])
 
 
@@ -59,9 +61,10 @@ schema = StructType([
 tweets = lines.map(lambda v: json.loads(v))
 
 #Extract the text field from the json object
-text_dstream = tweets.map(lambda tweet: tweet['text'])
+text_dstream = tweets.map(lambda tweet: str(tweet['text']))
 id_dstream = tweets.map(lambda tweet: tweet['id'])
 #text_dstream.pprint()
+
 
 
 #Goup by the id
@@ -73,7 +76,9 @@ author_counts = text_dstream.countByValue()
 author_counts.pprint()
 
 
-df = text_dstream.foreachRDD(lambda rdd: predict(rdd))
+#df = text_dstream.foreachRDD(lambda rdd: predict(rdd))
+#text_dstream.flatMap(lambda cr)
+text_dstream.foreachRDD(lambda rdd:rdd.toDF(schema).show())
 
 
 
