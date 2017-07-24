@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode
 from pyspark.sql.functions import split
+from pyspark.ml import Pipeline, PipelineModel
+
 
 
 spark = SparkSession.builder.appName("StructuredNetworkWordCount").getOrCreate()
@@ -10,16 +12,25 @@ spark = SparkSession.builder.appName("StructuredNetworkWordCount").getOrCreate()
 lines = spark.readStream.format("socket").option("host", "localhost").option("port", 9999).load()
 
 # Split the lines into words
-words = lines.select(
+test = lines.select(
    explode(
-       split(lines.value, " ")
-   ).alias("word")
+       split(lines.value, "\s{2,}")
+   ).alias("text")
 )
-
 # Generate running word count
-wordCounts = words.groupBy("word").count()
+model_saved = PipelineModel.load("/tmp/pipeline/")
+
+prediction = model_saved.transform(test)
+
+selected = prediction.select("text", "probability", "prediction")
+
+
 
 # Start running the query that prints the running counts to the console
-query = lines.show()
+query = selected \
+    .writeStream \
+    .format("console") \
+    .start()
+
 
 query.awaitTermination()
