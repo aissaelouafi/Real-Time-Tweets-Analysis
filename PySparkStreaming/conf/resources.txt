@@ -26,3 +26,6 @@ http://repo.hortonworks.com/index.html#welcome
 
 Submit the spark streaming job with the kafka jar
 ./spark-submit --jars ~/Desktop/MLProjets/RealTimeTweetsAnalysis/PySparkStreaming/jars/spark-streaming-kafka-0-8-assembly_2.11-2.1.1.2.6.1.1-2.jar  ~/Desktop/MLProjets/RealTimeTweetsAnalysis/PySparkStreaming/prediction/stream_prediction.py
+
+// Pyton SOLR connector
+https://pypi.python.org/pypi/pysolr/3.5.0
